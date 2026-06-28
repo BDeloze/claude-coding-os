@@ -92,6 +92,7 @@ the worked example the `test-driven-development` skill's "wire a runner first" s
 
 ## 6. Attribution
 
-The `test-driven-development`, `systematic-debugging`, `brainstorming`, and `writing-skills`
-skills are adapted from [obra/superpowers](https://github.com/obra/superpowers) (MIT License);
-each carries a provenance header noting local edits.
+The `test-driven-development`, `systematic-debugging`, `brainstorming`, `writing-skills`,
+`using-git-worktrees`, and `dispatching-parallel-agents` skills are adapted from
+[obra/superpowers](https://github.com/obra/superpowers) (MIT License); each carries a
+provenance header noting local edits.

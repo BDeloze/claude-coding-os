@@ -19,6 +19,8 @@ const GRAFTED = [
   'systematic-debugging',
   'brainstorming',
   'writing-skills',
+  'using-git-worktrees',
+  'dispatching-parallel-agents',
 ];
 const COMMANDS = ['feature', 'bugfix', 'incident', 'standup', 'weekly'];
 
