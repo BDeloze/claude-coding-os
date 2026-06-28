@@ -63,8 +63,10 @@ State persists in `TASKS.md`, `docs/specs/`, `docs/adr/`, and `docs/incidents/`.
 ## 3. Putting it on a project
 
 1. Copy this repo's contents into your project (or keep it as the project).
-2. **Rewrite `memory/stack-profile.md`** for your stack (the only file you must change).
-3. Fill in `memory/projects.md` with your environments, hosts, and any writeback targets.
+2. **Rewrite `memory/stack-profile.md`** for your stack — copy `memory/stack-profile.template.md`
+   over it and fill in every `<…>`. This is the only file you must change.
+3. Fill in `memory/projects.md` — copy the "Template (copy this block)" block at the top for
+   each project (environments, hosts, and any writeback targets).
 4. Start a task: `/feature add a verified-email gate on signup`, or just describe it and let
    the Orchestrator route.
 

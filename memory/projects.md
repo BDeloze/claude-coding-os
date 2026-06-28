@@ -10,6 +10,22 @@ Orchestrator stops and asks. Never guess. Never cross-write between projects.**
 
 ---
 
+## ── Template (copy this block for a new project, then delete this note) ──
+
+## <Project name>
+
+- **What:** <one line>
+- **Repo:** <url>
+- **Stack:** see `memory/stack-profile.md`.
+- **Environments:**
+  - Local: `<url>` · Staging: `<url>` · Production: `<url>`
+- **Env vars:** `<NAME>` — purpose (mark server-only ones explicitly).
+- **Test framework:** <wired? or interim bar>.
+- **External writeback (optional):** <tracker name + the exact DB/collection IDs and the
+  property names agents must use — see the "Live schemas" section for the shape>.
+
+---
+
 ## Race2Be
 
 - **What:** B2B2C PWA connecting local business owners (cafes / bars / bakeries) with runners.

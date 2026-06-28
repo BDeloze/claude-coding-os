@@ -31,7 +31,7 @@
 - **Backfill required:** yes / no — if yes, what.
 
 ## Authorization / Auth / Storage impact
-- **Authorization (RLS / policies):** every exposed table/path touched + the policy change.
+- **Authorization (policies / RLS / access rules):** every exposed table/path touched + the change.
 - **Storage:** buckets, paths, MIME types, policies.
 - **Auth:** any change to session / refresh / cookie handling.
 

@@ -98,3 +98,13 @@ test('core baseline files are present', () => {
     assert.ok(exists(f), `missing core file: ${f}`);
   }
 });
+
+test('the swappable overlay ships a neutral template for onboarding a new project', () => {
+  assert.ok(exists('memory/stack-profile.template.md'), 'missing stack-profile.template.md');
+  // The template must be fill-in-the-blanks (placeholders), not a copy of the race2be profile.
+  const tpl = read('memory/stack-profile.template.md');
+  assert.match(tpl, /<[^>]+>/, 'template should contain <…> placeholders');
+  assert.doesNotMatch(tpl, /Scalingo|Race2Be/, 'template must stay stack-neutral');
+  // projects.md must carry a copyable blank block alongside the worked examples.
+  assert.match(read('memory/projects.md'), /Template \(copy this block/, 'projects.md needs a blank template block');
+});
