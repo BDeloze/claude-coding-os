@@ -1,0 +1,14 @@
+{
+  "name": "claude-coding-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable, project-agnostic coding OS: role-driven, staging-first engineering methodology as native Claude Code subagents, skills, hooks, and commands.",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

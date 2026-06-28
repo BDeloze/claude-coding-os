@@ -13,7 +13,8 @@ commands. Drop it into any project; swap the stack profile and project registry.
   The Orchestrator is the front door; it classifies a request and routes to a specialist.
 - **Skills** (`.claude/skills/`) — auto-activating playbooks. The `flow-*` skills encode
   the workflows; the grafted skills (`test-driven-development`, `systematic-debugging`,
-  `brainstorming`, `writing-skills`) add discipline the roles invoke.
+  `brainstorming`, `writing-skills`, `using-git-worktrees`, `dispatching-parallel-agents`)
+  add discipline the roles invoke.
 - **Commands** (`.claude/commands/`) — `/feature`, `/bugfix`, `/incident`, `/standup`,
   `/weekly` slash wrappers that kick off a flow.
 - **Rules** (`engineering-rules.md`) — the canonical, stack-agnostic process every agent loads.

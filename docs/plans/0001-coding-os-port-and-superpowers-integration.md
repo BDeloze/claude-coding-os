@@ -178,6 +178,11 @@ lacks. Start with 1 eval per agent; grow over time.
 
 ## 7. Phased delivery
 
+> **Status (2026-06-28):** Phases 1–4 delivered. Phase 1 (scaffold) seeded directly onto
+> `main`; phases 2–4 are on `claude/superpowers-claude-os-ze2gmd` / PR #1. The remaining
+> open item is the optional deeper core/overlay generalization (D1 phase-4 stretch).
+
+
 | Phase | Scope | Output |
 |---|---|---|
 | **0 (this doc)** | Design + decisions | this plan, approved |

@@ -77,8 +77,22 @@ Prisma + Supabase + Scalingo, with Notion writeback) — use them as a worked ex
 `memory/stack-profile.md`. Swap that one file and the same agents, flows, and discipline apply
 to a different framework, DB, or host. The core process never changes.
 
-## 5. Attribution
+## 5. Tests
 
-The `test-driven-development`, `systematic-debugging`, `brainstorming`, and `writing-skills`
-skills are adapted from [obra/superpowers](https://github.com/obra/superpowers) (MIT License);
-each carries a provenance header noting local edits.
+The OS is self-tested — `npm test` runs Node's built-in test runner (zero dependencies):
+
+- **`tests/structure.test.mjs`** — every agent/skill/command is well-formed (frontmatter,
+  name matches path), `settings.json` wires hooks that exist, grafted skills keep their
+  attribution, core files are present.
+- **`tests/hooks.test.mjs`** — runs the two hooks as real subprocesses and asserts behavior
+  (tracker fires on a merge, stays silent otherwise; session-start emits valid context).
+
+CI (`.github/workflows/ci.yml`) runs the suite on every push to `main` and every PR. This is
+the worked example the `test-driven-development` skill's "wire a runner first" step points at.
+
+## 6. Attribution
+
+The `test-driven-development`, `systematic-debugging`, `brainstorming`, `writing-skills`,
+`using-git-worktrees`, and `dispatching-parallel-agents` skills are adapted from
+[obra/superpowers](https://github.com/obra/superpowers) (MIT License); each carries a
+provenance header noting local edits.
