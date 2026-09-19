@@ -89,7 +89,9 @@ to a different framework, DB, or host. The core process never changes.
 - Tiers live in **`memory/model-routing.md`** (swappable, like the stack profile):
   **T0 `haiku`** read-only recon and fully specified mechanical edits · **T1 `sonnet`** specified
   implementation with a check · **T2 `opus`** design, cross-cutting, concurrency, migrations,
-  authorization, non-obvious debugging. Floors: Planner/Reviewer ≥ T2, Ops ≥ T1,
+  authorization, non-obvious debugging · **T3 `fable`** conditional only: the Planner on a
+  genuinely ambiguous request, the Reviewer on a security-heavy diff (auth, authz/RLS, storage
+  policies, payments, secrets, unauthenticated input). Floors: Planner/Reviewer ≥ T2, Ops ≥ T1,
   sensitive-surface code ≥ T1.
 - The **Coder is dispatched per task** with the Agent tool's `model` parameter. Two failures at a
   tier → one tier up with the failure report; never down; never a third try.

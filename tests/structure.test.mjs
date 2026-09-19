@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { read, exists, lsFiles, lsDirs, frontmatter } from './helpers.mjs';
+import { FALLBACK_POLICY } from '../.claude/hooks/routing-policy.mjs';
 
 const AGENTS = ['orchestrator', 'planner', 'coder', 'reviewer', 'ops', 'tracker'];
 const FLOWS = [
@@ -140,9 +141,25 @@ test('memory/model-routing.md carries a valid policy block that matches the agen
     assert.ok(policy.rank[fmModel] >= policy.rank[policy.tiers[floor].model], `${role}: frontmatter model below floor`);
   }
   // The high tier plans and reviews; nothing else is what makes cheap execution safe.
+  const rankOf = (tier) => policy.rank[policy.tiers[tier].model];
+  const highestFloor = Math.max(...AGENTS.map((r) => rankOf(policy.agents[r].floor)));
+  for (const role of ['planner', 'reviewer']) {
+    assert.equal(rankOf(policy.agents[role].floor), highestFloor, `${role} floor must be the highest floor`);
+    assert.equal(policy.agents[role].floor, policy.agents[role].default, `${role} default must sit on its floor`);
+    assert.ok(rankOf(policy.agents[role].floor) > rankOf(policy.agents.coder.default), `${role} runs above the coder default`);
+  }
+  // T3 (fable) is a conditional per-dispatch override: only planner/reviewer, only above the
+  // default, and never an agent's frontmatter default.
   const top = Object.entries(policy.tiers).sort((a, b) => policy.rank[b[1].model] - policy.rank[a[1].model])[0][0];
-  assert.equal(policy.agents.planner.floor, top, 'planner floor must be the top tier');
-  assert.equal(policy.agents.reviewer.floor, top, 'reviewer floor must be the top tier');
+  assert.deepEqual(Object.keys(policy.overrides).sort(), ['planner', 'reviewer']);
+  for (const [role, o] of Object.entries(policy.overrides)) {
+    assert.equal(o.tier, top, `${role} override must target the top tier`);
+    assert.ok(rankOf(o.tier) > rankOf(policy.agents[role].default), `${role} override must be above its default`);
+    assert.ok(o.when?.length > 3, `${role} override needs a trigger`);
+  }
+  for (const role of AGENTS) {
+    assert.notEqual(frontmatter(read(`.claude/agents/${role}.md`)).model, policy.tiers[top].model, `${role} must not default to ${top}`);
+  }
 });
 
 test('the spec template carries the task routing table', () => {
@@ -153,4 +170,9 @@ test('the spec template carries the task routing table', () => {
 
 test('the ledger directory is git-ignored', () => {
   assert.match(read('.gitignore'), /^\.claude\/token-optimizer\/$/m);
+});
+
+test('the hooks\' built-in fallback policy matches memory/model-routing.md (no drift)', () => {
+  const policy = JSON.parse(read('memory/model-routing.md').match(/```json\s*\n([\s\S]*?)\n```/)[1]);
+  assert.deepEqual(FALLBACK_POLICY, policy);
 });

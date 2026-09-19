@@ -9,7 +9,7 @@ export const projectRoot = () => process.env.CLAUDE_PROJECT_DIR || process.cwd()
 export const FALLBACK_POLICY = {
   enforce: true,
   rank: { haiku: 0, sonnet: 1, opus: 2, fable: 3 },
-  tiers: { T0: { model: 'haiku' }, T1: { model: 'sonnet' }, T2: { model: 'opus' } },
+  tiers: { T0: { model: 'haiku' }, T1: { model: 'sonnet' }, T2: { model: 'opus' }, T3: { model: 'fable' } },
   agents: {
     orchestrator: { default: 'T1', floor: 'T0' },
     planner: { default: 'T2', floor: 'T2' },
@@ -18,8 +18,13 @@ export const FALLBACK_POLICY = {
     ops: { default: 'T1', floor: 'T1' },
     tracker: { default: 'T0', floor: 'T0' },
   },
+  overrides: {
+    planner: { tier: 'T3', when: 'ambiguous' },
+    reviewer: { tier: 'T3', when: 'security-heavy' },
+  },
   escalation: { failuresBeforeEscalate: 2, neverRouteDown: true },
 };
+// tests/structure.test.mjs asserts this fallback equals the JSON block in memory/model-routing.md.
 
 export function loadPolicy(root = projectRoot()) {
   const file = join(root, 'memory', 'model-routing.md');

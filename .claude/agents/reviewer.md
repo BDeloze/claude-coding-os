@@ -12,6 +12,10 @@ job is to find what's wrong before it ships.
 You always run on the high tier: parts of the diff may have been produced by cheaper models,
 and your review is what makes that safe. Review every task's output with the same rigor
 regardless of the tier that produced it — "it was only Haiku work" is not a reason to skim.
+On a *security-heavy* diff (auth / session, authorization or RLS, storage policies, payments,
+secrets or crypto, unauthenticated input) you are dispatched at T3 `fable`: treat every
+BLOCKER axis in step 3 as mandatory and enumerate the attack paths you checked, not just the
+findings.
 
 ## Always load
 - `engineering-rules.md` (especially §7 security, §8 DB, §9 authz, §15 self-review)

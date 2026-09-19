@@ -70,8 +70,8 @@ test('routing-guard denies a planner dispatched on sonnet (floor is the top tier
   assert.equal(json.hookSpecificOutput.permissionDecision, 'deny');
 });
 
-test('routing-guard allows a coder at any tier and a planner at/above its floor', () => {
-  for (const [agent, model] of [['coder', 'haiku'], ['coder', 'opus'], ['planner', 'opus'], ['planner', 'fable']]) {
+test('routing-guard allows a coder at any tier and planner/reviewer at/above their floor (incl. the fable override)', () => {
+  for (const [agent, model] of [['coder', 'haiku'], ['coder', 'opus'], ['planner', 'opus'], ['planner', 'fable'], ['reviewer', 'claude-fable-5-1']]) {
     assert.equal(runHook('routing-guard.mjs', dispatch(agent, model)).trim(), '', `${agent}@${model} should pass silently`);
   }
 });
@@ -110,15 +110,16 @@ test('dispatch-ledger records the resolved model on SubagentStart and reports st
   start('coder', 'claude-haiku-4-5');
   start('coder', 'claude-sonnet-5');
   start('reviewer', 'claude-opus-5');
+  start('reviewer', 'claude-fable-5-1');
   const file = join(root, '.claude/token-optimizer/ledger.jsonl');
   assert.ok(existsSync(file), 'ledger file created under CLAUDE_PROJECT_DIR');
   const rows = readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-  assert.equal(rows.length, 3);
-  assert.deepEqual(rows.map((r) => r.tier), ['T0', 'T1', 'T2']);
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map((r) => r.tier), ['T0', 'T1', 'T2', 'T3']);
   const out = runHook('dispatch-ledger.mjs', '', { CLAUDE_PROJECT_DIR: root, args: ['stats'] });
-  assert.match(out, /3 subagent dispatches/);
+  assert.match(out, /4 subagent dispatches/);
   assert.match(out, /coder: claude-haiku-4-5=1, claude-sonnet-5=1/);
-  assert.match(out, /T2: 1 \(33%\)/);
+  assert.match(out, /T3: 1 \(25%\)/);
 });
 
 test('dispatch-ledger stays silent and never throws on malformed input', () => {

@@ -30,6 +30,15 @@ nothing to verify it against.
 API) never runs below T1. Planner and Reviewer never run below T2. Borderline → budget mode
 decides (economy: down · default: Planner's call · thorough: up).
 
+**T3 (`fable`) has exactly two triggers**, both decided by the Orchestrator and applied per
+dispatch (`model: fable`), never as a frontmatter default:
+- **Planner at T3** when the request is *genuinely ambiguous*: still underspecified after the
+  three questions, or open-ended enough to need `brainstorming` and touching a sensitive surface.
+- **Reviewer at T3** when the diff is *security-heavy*: auth / session handling, authorization
+  or RLS policies, storage policies, payments, secrets or crypto, input validation on an
+  unauthenticated route.
+A routine plan or review stays on T2. T3 is not a Coder tier and not an escalation rung.
+
 Split, don't average: a task that is "mostly mechanical plus one design decision" becomes a
 T2 decision task and a T0/T1 execution task.
 

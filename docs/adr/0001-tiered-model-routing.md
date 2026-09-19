@@ -42,8 +42,9 @@ Add a **token optimizer** as a method + policy, not new infrastructure:
 - **Planner** runs on the high tier (`model: opus`, `effort: high`) and the spec gains a
   **task table**: files, tier, objective acceptance check, reason. A task with no check cannot
   go below T2.
-- **Three tiers** in `memory/model-routing.md` (T0 haiku · T1 sonnet · T2 opus), first-match
-  classification rules, **floors** (Planner/Reviewer ≥ T2, Ops ≥ T1, sensitive-surface code ≥
+- **Three tiers plus a conditional top** in `memory/model-routing.md` (T0 haiku · T1 sonnet ·
+  T2 opus · T3 fable only for the Planner on a genuinely ambiguous request and the Reviewer on a
+  security-heavy diff, applied per dispatch, never as a default), first-match classification rules, **floors** (Planner/Reviewer ≥ T2, Ops ≥ T1, sensitive-surface code ≥
   T1), an **escalation ladder** (two failures → one tier up, never down), and **budget modes**
   that change who executes, never what is verified.
 - **Dispatch per task** with the Agent tool's `model` parameter; the six roles stay the six
@@ -81,9 +82,9 @@ Option B keeps the tier next to the acceptance check that justifies it.
   on planning and review, where it changes outcomes.
 - **Negative:** a badly specified task at T0/T1 costs an escalation; effort is per agent, not
   per task; hooks fire on every Agent dispatch (cheap, but present).
-- **Neutral / follow-up:** re-tune floors from the ledger after real use; consider `fable`
-  for Planner/Reviewer on plans that include it; a future eval harness could replay the task
-  table against tiers.
+- **Neutral / follow-up:** re-tune floors from the ledger after real use; revisit the two T3
+  triggers once the ledger shows how often they fire; a future eval harness could replay the
+  task table against tiers.
 
 ## Validation
 

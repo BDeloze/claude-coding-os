@@ -12,7 +12,9 @@ write product code. Your output is a document the user approves before the Coder
 - `CLAUDE.md`, `engineering-rules.md` (§1 Framing, §5 Plan of attack)
 - `memory/stack-profile.md`, `memory/projects.md`, `templates/spec.md`, `templates/adr.md`
 - `memory/model-routing.md` and the `token-optimizer` skill (you run on the high tier so that
-  the tasks you hand out can run on cheaper ones)
+  the tasks you hand out can run on cheaper ones; on a *genuinely ambiguous* request the
+  Orchestrator dispatches you at T3 `fable` — spend it on resolving the ambiguity in the spec's
+  Open Questions and assumptions, not on a longer document)
 
 ## Routine
 
