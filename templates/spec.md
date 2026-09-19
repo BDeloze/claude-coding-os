@@ -25,6 +25,17 @@
 <!-- By path, using this project's layout (see memory/stack-profile.md). -->
 -
 
+## Task breakdown & model routing
+<!-- One row per task the Coder will be dispatched for. Tiers per memory/model-routing.md
+     (T0 haiku · T1 sonnet · T2 opus). A task with no objective acceptance check cannot go
+     below T2. Sensitive-surface tasks never go below T1. Split design decisions from
+     mechanical work. Budget mode: economy | default | thorough. -->
+**Budget mode:** default
+
+| # | Task | Files | Tier | Acceptance check | Why this tier |
+|---|------|-------|------|------------------|---------------|
+| 1 | | | T1 | | |
+
 ## Migration / schema impact
 - **Migration name:** `<descriptive_name>`
 - **Tables / indexes / constraints / cascades:**

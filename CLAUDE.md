@@ -18,6 +18,9 @@ commands. Drop it into any project; swap the stack profile and project registry.
 - **Commands** (`.claude/commands/`) — `/feature`, `/bugfix`, `/incident`, `/standup`,
   `/weekly` slash wrappers that kick off a flow.
 - **Rules** (`engineering-rules.md`) — the canonical, stack-agnostic process every agent loads.
+- **Token optimizer** (`token-optimizer` skill + `memory/model-routing.md`) — the Planner runs on
+  the high tier and names a tier (T0 haiku / T1 sonnet / T2 opus) per task; the Coder is
+  dispatched per task at that tier; Reviewer stays high. Hooks enforce floors and keep a ledger.
 - **Stack profile** (`memory/stack-profile.md`) — the swappable, project-specific stack
   details the generic rules reference. **Edit this, not the core rules, per project.**
 - **Project registry** (`memory/projects.md`) — environments, hosts, and any external
@@ -45,6 +48,7 @@ commands. Drop it into any project; swap the stack profile and project registry.
 - Agent prompts (dispatchable subagents): `.claude/agents/`
 - Workflows (auto-activating): `.claude/skills/flow-*`
 - Project registry (envs, hosts, writeback IDs): `memory/projects.md`
+- Model tiers, floors, budget modes: `memory/model-routing.md` · ledger report: `/routing`
 - Glossary, people: `memory/`
 - Architecture decisions: `docs/adr/` · Specs: `docs/specs/` · Incidents: `docs/incidents/`
 - Current work: `TASKS.md`

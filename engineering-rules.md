@@ -239,6 +239,22 @@ A short PR description is fine. A missing rollback plan is not.
 
 ---
 
+## 18. Token Economy (model routing)
+
+- **The strongest model decides; the cheapest model that can be verified does.** Planning and
+  review run on the high tier. Each implementation task runs at the tier the spec's task table
+  names (T0 / T1 / T2 → `memory/model-routing.md`), dispatched with the model parameter.
+- A task goes below T2 only if it is **fully specified** and has an **objective acceptance
+  check**. Sensitive-surface tasks never go below T1. Planner and Reviewer never below T2.
+- **Escalation ladder:** two failures at a tier (or `ESCALATE:`) → one tier up with the failure
+  report. Never route down. Never a third try at the same tier.
+- **Verification is never cut** to save tokens: Reviewer + gate run on every PR, whatever tier
+  produced it. Budget modes change who executes, not what is verified.
+- Re-tune the policy from the ledger (`/routing`) and from recorded escalations — never from a
+  single run. The method lives in the `token-optimizer` skill.
+
+---
+
 ## Permanent Reminder (again, because it matters)
 
 **1 task = 1 branch. Any DB / Auth / authorization / Storage / API change is validated on

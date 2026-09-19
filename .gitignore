@@ -1,0 +1,3 @@
+# Local, per-session data written by the token optimizer ledger hook.
+.claude/token-optimizer/
+node_modules/
