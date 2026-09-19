@@ -17,10 +17,12 @@ You → Orchestrator → Planner (lightweight) → Coder → Reviewer → (you a
 
 1. **Request.**
 2. **Orchestrator** confirms non-sensitive, confirms a branch, routes to Planner.
-3. **Planner — lightweight spec.** Goals, non-goals, target files, acceptance criteria. The
-   staging checklist is **not** required.
-4. **Coder** implements on a fresh branch per the stack profile's UI conventions, runs the
-   gate, opens a PR.
+3. **Planner — lightweight spec.** Goals, non-goals, target files, acceptance criteria, and the
+   **task table with a tier per task** (`token-optimizer`; UI-only work is where T0/T1 pay off
+   most). The staging checklist is **not** required.
+4. **Coder** is dispatched per task at the named tier (escalate one tier on two failures,
+   never route down); implements on a fresh branch per the stack profile's UI conventions,
+   runs the gate, opens a PR.
 5. **Reviewer** reads diff + spec; verdict.
 6. **You approve and merge** → deploy.
 7. **Tracker** logs the entry; updates docs only if user-visible behavior changed

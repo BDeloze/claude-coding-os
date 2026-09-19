@@ -16,13 +16,19 @@ You → Orchestrator → Planner → (you review spec) → Coder → Reviewer �
 ## Steps
 
 1. **Request.** State the change.
-2. **Orchestrator** confirms project + sensitive surface, confirms a branch, routes to Planner.
-3. **Planner** writes `docs/specs/<slug>.md` (migration + impact, authorization/RLS change,
-   staging checklist, feature flag + ramp, rollback plan). ADR if it sets a pattern.
+2. **Orchestrator** confirms project + sensitive surface, flags security-heavy / ambiguous (the
+   two T3 triggers), confirms a branch, routes to Planner (T3 `fable` if ambiguous).
+3. **Planner** (high tier) writes `docs/specs/<slug>.md` (migration + impact, authorization/RLS
+   change, staging checklist, feature flag + ramp, rollback plan, **task table with a tier and
+   acceptance check per task** — `token-optimizer`). ADR if it sets a pattern.
 4. **You review the spec.** Approve / change / kill. **No code runs until approved.**
-5. **Coder** implements on a fresh branch, tests proportional to impact, runs the gate,
-   opens a PR (target `staging`) with the six required sections.
-6. **Reviewer** (fresh session) reads diff + spec only; tags findings; verdict.
+5. **Coder** is dispatched **per task at the tier the table names** (never below T1 on this
+   flow's sensitive tasks); escalation ladder on failure (two fails → one tier up, never down).
+   Implements on a fresh branch, tests proportional to impact, runs the gate, opens a PR
+   (target `staging`) with the six required sections and any escalations noted.
+6. **Reviewer** (fresh session, high tier — **T3 `fable` when the Orchestrator flagged the
+   change security-heavy**) reads diff + spec only; tags findings; verdict. Same rigor whatever
+   tier produced each part.
 7. **You approve and merge** → deploys to staging.
 8. **Ops runs the staging gate** — seven points, all green, documented on the PR.
 9. **Prod** — two-phase compat → migrate/backfill → cleanup; ramp 1% → 10% → 100%; smoke +

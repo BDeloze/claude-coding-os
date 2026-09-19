@@ -21,6 +21,11 @@ test('every role agent has at least one eval directory with a case', () => {
   }
 });
 
+test('the token optimizer skill has at least one eval case', () => {
+  const cases = lsFiles('evals/token-optimizer').filter((f) => f.endsWith('.md'));
+  assert.ok(cases.length >= 1, 'evals/token-optimizer/ has no eval case');
+});
+
 test('every eval file declares Target, Prompt, Expect, and Anti-expect', () => {
   const files = evalFiles();
   assert.ok(files.length >= AGENTS.length, 'expected at least one eval per agent');

@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { read, exists, lsFiles, lsDirs, frontmatter } from './helpers.mjs';
+import { FALLBACK_POLICY } from '../.claude/hooks/routing-policy.mjs';
 
 const AGENTS = ['orchestrator', 'planner', 'coder', 'reviewer', 'ops', 'tracker'];
 const FLOWS = [
@@ -22,7 +23,9 @@ const GRAFTED = [
   'using-git-worktrees',
   'dispatching-parallel-agents',
 ];
-const COMMANDS = ['feature', 'bugfix', 'incident', 'standup', 'weekly'];
+const COMMANDS = ['feature', 'bugfix', 'incident', 'standup', 'weekly', 'routing'];
+const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable', 'inherit'];
+const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 test('all six role agents exist with name+description, name matching the filename', () => {
   for (const role of AGENTS) {
@@ -51,9 +54,9 @@ test('every skill has a SKILL.md whose name matches its directory', () => {
   }
 });
 
-test('the six flows and four grafted skills are all present', () => {
+test('the six flows, the grafted skills, and the token optimizer are all present', () => {
   const dirs = lsDirs('.claude/skills');
-  for (const s of [...FLOWS, ...GRAFTED]) {
+  for (const s of [...FLOWS, ...GRAFTED, 'token-optimizer']) {
     assert.ok(dirs.includes(s), `missing skill: ${s}`);
   }
 });
@@ -94,6 +97,7 @@ test('core baseline files are present', () => {
     'TASKS.md',
     'memory/stack-profile.md',
     'memory/projects.md',
+    'memory/model-routing.md',
   ]) {
     assert.ok(exists(f), `missing core file: ${f}`);
   }
@@ -107,4 +111,68 @@ test('the swappable overlay ships a neutral template for onboarding a new projec
   assert.doesNotMatch(tpl, /Scalingo|Race2Be/, 'template must stay stack-neutral');
   // projects.md must carry a copyable blank block alongside the worked examples.
   assert.match(read('memory/projects.md'), /Template \(copy this block/, 'projects.md needs a blank template block');
+});
+
+// ---- Token optimizer: every role carries a tier default, and the policy is parseable and
+// consistent with the agents' frontmatter (drift here would silently defeat the floors).
+test('every role agent declares a valid model tier (and a valid effort when set)', () => {
+  for (const role of AGENTS) {
+    const fm = frontmatter(read(`.claude/agents/${role}.md`));
+    assert.ok(MODEL_ALIASES.includes(fm.model), `${role}: model "${fm.model}" is not a known alias`);
+    if (fm.effort) assert.ok(EFFORT_LEVELS.includes(fm.effort), `${role}: bad effort "${fm.effort}"`);
+  }
+});
+
+test('memory/model-routing.md carries a valid policy block that matches the agents', () => {
+  const m = read('memory/model-routing.md').match(/```json\s*\n([\s\S]*?)\n```/);
+  assert.ok(m, 'model-routing.md needs a ```json policy block');
+  const policy = JSON.parse(m[1]);
+  assert.deepEqual(Object.keys(policy.agents).sort(), [...AGENTS].sort(), 'policy must cover the six roles');
+  for (const [tier, def] of Object.entries(policy.tiers)) {
+    assert.ok(def.model in policy.rank, `${tier}: model "${def.model}" has no rank`);
+  }
+  for (const role of AGENTS) {
+    const { default: def, floor } = policy.agents[role];
+    assert.ok(policy.tiers[def], `${role}: default tier ${def} undefined`);
+    assert.ok(policy.tiers[floor], `${role}: floor tier ${floor} undefined`);
+    // The agent's frontmatter default must be the policy's declared default, and never below its floor.
+    const fmModel = frontmatter(read(`.claude/agents/${role}.md`)).model;
+    assert.equal(fmModel, policy.tiers[def].model, `${role}: frontmatter model should be ${policy.tiers[def].model} (policy default ${def})`);
+    assert.ok(policy.rank[fmModel] >= policy.rank[policy.tiers[floor].model], `${role}: frontmatter model below floor`);
+  }
+  // The high tier plans and reviews; nothing else is what makes cheap execution safe.
+  const rankOf = (tier) => policy.rank[policy.tiers[tier].model];
+  const highestFloor = Math.max(...AGENTS.map((r) => rankOf(policy.agents[r].floor)));
+  for (const role of ['planner', 'reviewer']) {
+    assert.equal(rankOf(policy.agents[role].floor), highestFloor, `${role} floor must be the highest floor`);
+    assert.equal(policy.agents[role].floor, policy.agents[role].default, `${role} default must sit on its floor`);
+    assert.ok(rankOf(policy.agents[role].floor) > rankOf(policy.agents.coder.default), `${role} runs above the coder default`);
+  }
+  // T3 (fable) is a conditional per-dispatch override: only planner/reviewer, only above the
+  // default, and never an agent's frontmatter default.
+  const top = Object.entries(policy.tiers).sort((a, b) => policy.rank[b[1].model] - policy.rank[a[1].model])[0][0];
+  assert.deepEqual(Object.keys(policy.overrides).sort(), ['planner', 'reviewer']);
+  for (const [role, o] of Object.entries(policy.overrides)) {
+    assert.equal(o.tier, top, `${role} override must target the top tier`);
+    assert.ok(rankOf(o.tier) > rankOf(policy.agents[role].default), `${role} override must be above its default`);
+    assert.ok(o.when?.length > 3, `${role} override needs a trigger`);
+  }
+  for (const role of AGENTS) {
+    assert.notEqual(frontmatter(read(`.claude/agents/${role}.md`)).model, policy.tiers[top].model, `${role} must not default to ${top}`);
+  }
+});
+
+test('the spec template carries the task routing table', () => {
+  const tpl = read('templates/spec.md');
+  assert.match(tpl, /## Task breakdown & model routing/);
+  assert.match(tpl, /\| # \| Task \| Files \| Tier \| Acceptance check \| Why this tier \|/);
+});
+
+test('the ledger directory is git-ignored', () => {
+  assert.match(read('.gitignore'), /^\.claude\/token-optimizer\/$/m);
+});
+
+test('the hooks\' built-in fallback policy matches memory/model-routing.md (no drift)', () => {
+  const policy = JSON.parse(read('memory/model-routing.md').match(/```json\s*\n([\s\S]*?)\n```/)[1]);
+  assert.deepEqual(FALLBACK_POLICY, policy);
 });

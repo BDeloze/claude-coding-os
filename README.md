@@ -28,15 +28,16 @@ claude-coding-os/
 ├── engineering-rules.md      # canonical, stack-AGNOSTIC rules every agent reads
 ├── TASKS.md                  # current work, owned by Tracker
 ├── .claude/
-│   ├── agents/               # 6 dispatchable subagents (frontmatter: name, description)
+│   ├── agents/               # 6 dispatchable subagents (frontmatter: name, description, model tier)
 │   ├── skills/               # auto-activating playbooks
 │   │   ├── flow-*/           #   the six workflows
 │   │   └── <grafted>/        #   tdd, systematic-debugging, brainstorming, writing-skills
-│   ├── commands/             # /feature /bugfix /incident /standup /weekly
-│   ├── hooks/                # session-start bootstrap + tracker-trigger
+│   ├── commands/             # /feature /bugfix /incident /standup /weekly /routing
+│   ├── hooks/                # session-start, tracker-trigger, routing-guard, dispatch-ledger
 │   └── settings.json         # hook wiring + permission allowlist
 ├── memory/
 │   ├── stack-profile.md      # THE SWAPPABLE LAYER — stack specifics live here
+│   ├── model-routing.md      # token optimizer policy: tiers, floors, budget modes
 │   ├── projects.md           # per-project registry (envs, hosts, writeback IDs)
 │   ├── people.md
 │   ├── glossary.md
@@ -79,20 +80,44 @@ Prisma + Supabase + Scalingo, with Notion writeback) — use them as a worked ex
 `memory/stack-profile.md`. Swap that one file and the same agents, flows, and discipline apply
 to a different framework, DB, or host. The core process never changes.
 
-## 5. Tests
+## 5. Token optimizer (model routing)
+
+**The strongest model decides; the cheapest model that can be verified does.**
+
+- The **Planner** runs on the high tier (`model: opus`, `effort: high`) and every spec carries a
+  **task table**: files, tier, objective acceptance check, and why that tier.
+- Tiers live in **`memory/model-routing.md`** (swappable, like the stack profile):
+  **T0 `haiku`** read-only recon and fully specified mechanical edits · **T1 `sonnet`** specified
+  implementation with a check · **T2 `opus`** design, cross-cutting, concurrency, migrations,
+  authorization, non-obvious debugging · **T3 `fable`** conditional only: the Planner on a
+  genuinely ambiguous request, the Reviewer on a security-heavy diff (auth, authz/RLS, storage
+  policies, payments, secrets, unauthenticated input). Floors: Planner/Reviewer ≥ T2, Ops ≥ T1,
+  sensitive-surface code ≥ T1.
+- The **Coder is dispatched per task** with the Agent tool's `model` parameter. Two failures at a
+  tier → one tier up with the failure report; never down; never a third try.
+- **Reviewer stays high** and the gate always runs — budget modes (economy / default / thorough)
+  change who executes, never what is verified.
+- Two hooks: `routing-guard.mjs` (PreToolUse on Agent) denies a role below its floor and reminds
+  when no tier was named; `dispatch-ledger.mjs` (SubagentStart) logs the resolved model to
+  `.claude/token-optimizer/ledger.jsonl`. `/routing` reports it so floors are re-tuned from
+  evidence. Design and the open-source survey behind it: `docs/adr/0001-tiered-model-routing.md`.
+
+## 6. Tests
 
 The OS is self-tested — `npm test` runs Node's built-in test runner (zero dependencies):
 
 - **`tests/structure.test.mjs`** — every agent/skill/command is well-formed (frontmatter,
   name matches path), `settings.json` wires hooks that exist, grafted skills keep their
   attribution, core files are present.
-- **`tests/hooks.test.mjs`** — runs the two hooks as real subprocesses and asserts behavior
-  (tracker fires on a merge, stays silent otherwise; session-start emits valid context).
+- **`tests/hooks.test.mjs`** — runs the hooks as real subprocesses and asserts behavior
+  (tracker fires on a merge, stays silent otherwise; session-start emits valid context;
+  routing-guard denies a below-floor dispatch and reminds on a tier-less one; dispatch-ledger
+  records and summarizes).
 
 CI (`.github/workflows/ci.yml`) runs the suite on every push to `main` and every PR. This is
 the worked example the `test-driven-development` skill's "wire a runner first" step points at.
 
-## 6. Attribution
+## 7. Attribution
 
 The `test-driven-development`, `systematic-debugging`, `brainstorming`, `writing-skills`,
 `using-git-worktrees`, and `dispatching-parallel-agents` skills are adapted from

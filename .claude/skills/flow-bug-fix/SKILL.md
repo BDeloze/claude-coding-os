@@ -14,8 +14,11 @@ You → Orchestrator → [trivial?]  yes → Coder
 ```
 
 ## Classification (Orchestrator)
-- **Trivial** (typo / copy / one-liner) → Coder directly.
-- **Non-trivial** (logic / race / edge) → Planner first (a half-page spec is fine).
+- **Trivial** (typo / copy / one-liner) → Coder directly, at **T0** if fully specified with an
+  objective check, else **T1** (`token-optimizer`).
+- **Non-trivial** (logic / race / edge) → Planner first (a half-page spec is fine, but it
+  carries the task table). Root-causing a non-obvious bug is **T2** work; the fix, once
+  specified, usually is not.
 - **Surface**, independent of size: touches DB / Auth / authorization / Storage / API →
   **sensitive** → staging gate. UI-only → no gate.
 
