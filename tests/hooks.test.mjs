@@ -44,6 +44,51 @@ test('tracker-trigger stays silent on unrelated commands', () => {
   assert.equal(out.trim(), '', 'expected no output for a non-merge command');
 });
 
+const trackerFires = (command) =>
+  runHook('tracker-trigger.mjs', JSON.stringify({ tool_input: { command } })).trim() !== '';
+
+test('tracker-trigger ignores "main" inside quoted messages and heredocs', () => {
+  for (const command of [
+    'git merge -s ours -m "chore: merge tip (content already on main via #3)" origin/feature',
+    'git commit -m "fix: run git push origin main later"',
+    "git commit -m 'docs: explain gh pr merge 12 on main'",
+    'git commit -F - <<\'EOF\'\nfix: git push origin main\nEOF',
+  ]) {
+    assert.equal(trackerFires(command), false, `should stay silent: ${command}`);
+  }
+});
+
+test('tracker-trigger ignores merging main INTO a branch and branches that merely contain "main"', () => {
+  for (const command of [
+    'git merge main',
+    'git merge origin/main',
+    'git push origin claude/maintenance',
+    'git push -u origin fix/main-menu',
+    'git push origin main-backup',
+  ]) {
+    assert.equal(trackerFires(command), false, `should stay silent: ${command}`);
+  }
+});
+
+test('tracker-trigger fires on real pushes to main and merges made while on main', () => {
+  for (const command of [
+    'git push origin main',
+    'git push origin HEAD:main',
+    'git push --force-with-lease origin +staging:refs/heads/main',
+    'git -C /repo push origin staging:main',
+    'git checkout main && git merge --no-ff feat/x',
+    'git switch main; git merge staging && git push',
+    'git checkout main && git push origin',
+    'gh pr merge 42 --squash',
+  ]) {
+    assert.equal(trackerFires(command), true, `should fire: ${command}`);
+  }
+});
+
+test('tracker-trigger stops treating later merges as into main after leaving main', () => {
+  assert.equal(trackerFires('git checkout main && git pull && git checkout feat/x && git merge main'), false);
+});
+
 test('tracker-trigger survives malformed input without throwing', () => {
   const out = runHook('tracker-trigger.mjs', 'not json at all');
   assert.equal(out.trim(), '');
