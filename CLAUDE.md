@@ -54,6 +54,14 @@ commands. Drop it into any project; swap the stack profile and project registry.
 - Architecture decisions: `docs/adr/` · Specs: `docs/specs/` · Incidents: `docs/incidents/`
 - Current work: `TASKS.md`
 
+## Close before opening
+
+Ship what is done before starting anything new. Finished work tends to pile up on staging without being deployed.
+
+- **At the start of a session**, check the gap between staging and production: `git log origin/main..origin/staging` and pending migrations, in every repo the product spans. If there is a gap, first propose what reduces it: the staging checklist, the migrations to apply, the promotion to `main`.
+- **A new improvement idea** goes into `TASKS.md` (or the branch card's `next`) instead of being opened. Open it only when the owner explicitly asks.
+- **At the end of a task**, say in one line what is still between staging and production: the number of commits and the pending migrations.
+
 ## When in doubt
 
 Say so. Propose a verification. Never fabricate command output, file contents, or results.
