@@ -24,7 +24,7 @@ const GRAFTED = [
   'dispatching-parallel-agents',
 ];
 const COMMANDS = ['feature', 'bugfix', 'incident', 'standup', 'weekly', 'routing'];
-const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable', 'inherit'];
+const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'inherit'];
 const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 test('all six role agents exist with name+description, name matching the filename', () => {
@@ -75,6 +75,14 @@ test('every slash command exists with a description', () => {
     const fm = frontmatter(read(rel));
     assert.ok(fm?.description?.length > 5, `${rel}: missing description`);
   }
+});
+
+test('the ledger is wired to PostToolUse on the Agent tool, not SubagentStart', () => {
+  const settings = JSON.parse(read('.claude/settings.json'));
+  assert.equal(settings.hooks.SubagentStart, undefined);
+  const group = settings.hooks.PostToolUse.find((g) => g.hooks.some((h) => /dispatch-ledger\.mjs/.test(h.command)));
+  assert.ok(group, 'dispatch-ledger must be a PostToolUse hook');
+  assert.equal(group.matcher, 'Agent|Task');
 });
 
 test('settings.json is valid and references hook scripts that exist', () => {
@@ -130,6 +138,15 @@ test('memory/model-routing.md carries a valid policy block that matches the agen
   assert.deepEqual(Object.keys(policy.agents).sort(), [...AGENTS].sort(), 'policy must cover the six roles');
   for (const [tier, def] of Object.entries(policy.tiers)) {
     assert.ok(def.model in policy.rank, `${tier}: model "${def.model}" has no rank`);
+    assert.ok(EFFORT_LEVELS.includes(def.effort), `${tier}: effort "${def.effort}" is not a valid level`);
+  }
+  // Effort rises with the tier: a cheaper model never thinks harder than a stronger one by default.
+  const ordered = Object.values(policy.tiers).sort((a, b) => policy.rank[a.model] - policy.rank[b.model]);
+  for (let i = 1; i < ordered.length; i++) {
+    assert.ok(
+      EFFORT_LEVELS.indexOf(ordered[i].effort) >= EFFORT_LEVELS.indexOf(ordered[i - 1].effort),
+      `effort must not drop from ${ordered[i - 1].model} to ${ordered[i].model}`
+    );
   }
   for (const role of AGENTS) {
     const { default: def, floor } = policy.agents[role];
@@ -148,18 +165,11 @@ test('memory/model-routing.md carries a valid policy block that matches the agen
     assert.equal(policy.agents[role].floor, policy.agents[role].default, `${role} default must sit on its floor`);
     assert.ok(rankOf(policy.agents[role].floor) > rankOf(policy.agents.coder.default), `${role} runs above the coder default`);
   }
-  // T3 (fable) is a conditional per-dispatch override: only planner/reviewer, only above the
-  // default, and never an agent's frontmatter default.
+  // No tier sits above the planner/reviewer floor: the top tier is what plans and reviews.
   const top = Object.entries(policy.tiers).sort((a, b) => policy.rank[b[1].model] - policy.rank[a[1].model])[0][0];
-  assert.deepEqual(Object.keys(policy.overrides).sort(), ['planner', 'reviewer']);
-  for (const [role, o] of Object.entries(policy.overrides)) {
-    assert.equal(o.tier, top, `${role} override must target the top tier`);
-    assert.ok(rankOf(o.tier) > rankOf(policy.agents[role].default), `${role} override must be above its default`);
-    assert.ok(o.when?.length > 3, `${role} override needs a trigger`);
-  }
-  for (const role of AGENTS) {
-    assert.notEqual(frontmatter(read(`.claude/agents/${role}.md`)).model, policy.tiers[top].model, `${role} must not default to ${top}`);
-  }
+  assert.equal(policy.agents.planner.floor, top, 'planner floor must be the top tier');
+  assert.equal(policy.agents.reviewer.floor, top, 'reviewer floor must be the top tier');
+  assert.equal(policy.overrides, undefined, 'no per-dispatch tier overrides above the defaults');
 });
 
 test('the spec template carries the task routing table', () => {

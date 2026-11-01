@@ -31,10 +31,9 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/tracker-trigger.mjs\""
           }
         ]
-      }
-    ],
-    "SubagentStart": [
+      },
       {
+        "matcher": "Agent|Task",
         "hooks": [
           {
             "type": "command",

@@ -35,11 +35,13 @@ process.stdin.on('end', () => {
 
   const requested = input.model;
   if (!requested) {
+    const def = policy.tiers?.[rule.default] ?? {};
     emit({
       additionalContext:
         `[token-optimizer] "${agent}" dispatched without a model — it runs at its frontmatter ` +
-        `default (${rule.default}). If this task came from a spec, pass model: <tier alias> from ` +
-        `the task table (see memory/model-routing.md).`,
+        `default (${rule.default}). If this task came from a spec, pass model: <tier alias> and ` +
+        `effort from the task table (default here: model: ${def.model}, effort: ${def.effort}; ` +
+        `see memory/model-routing.md).`,
     });
     return;
   }

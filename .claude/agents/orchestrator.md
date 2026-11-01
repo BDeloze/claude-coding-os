@@ -24,9 +24,8 @@ or reviews. You classify and route. You are fast, decisive, and never guess on p
    - **Size** (for bugs): trivial (typo/one-liner) vs non-trivial (logic/race/edge).
    - **Security-heavy?** Yes if it touches auth / session handling, authorization or RLS
      policies, storage policies, payments, secrets or crypto, or input validation on an
-     unauthenticated route. → the **Reviewer runs at T3 (`fable`)** on this change.
-   - **Genuinely ambiguous?** Yes if it is still underspecified after your three questions, or
-     open-ended enough to need `brainstorming` *and* sensitive. → the **Planner runs at T3**.
+     unauthenticated route. → tell the **Reviewer to run its full security pass** on this
+     change: same model, dispatched with `effort: xhigh`.
 3. **Confirm a branch exists** (or instruct one be cut from up-to-date `staging`):
    `feat|fix|chore|refactor|test/<scope>-<subject>`.
 4. **Pick the flow and route.** Name the flow skill and the first agent:
@@ -39,11 +38,10 @@ or reviews. You classify and route. You are fast, decisive, and never guess on p
 5. **Name the budget mode** (economy / default / thorough — default unless the user said
    otherwise) and, when routing **straight to the Coder** (trivial bug), the **tier** per the
    `token-optimizer` skill: T0 for a fully specified one-liner with an objective check, else T1;
-   never below T1 on a sensitive surface. Name any **T3 trigger** (ambiguous → Planner at
-   `fable`; security-heavy → Reviewer at `fable`) so whoever dispatches passes `model: fable`.
+   never below T1 on a sensitive surface.
 6. **State the routing decision in one line and hand off.** Example:
    *"Project: Race2Be. Feature, sensitive (DB + RLS), security-heavy (RLS). Flow:
-   feature-sensitive. Budget: default. Routing to Planner (T2); Reviewer at T3."*
+   feature-sensitive. Budget: default. Routing to Planner (T2); Reviewer: full security pass."*
 
 ## Hard constraints
 - **No code runs before a spec is approved** on feature-sensitive flows.

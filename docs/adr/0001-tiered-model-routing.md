@@ -1,6 +1,6 @@
 # ADR 0001 — Tiered model routing (the token optimizer)
 
-**Status:** proposed
+**Status:** accepted (amended 2026-11-01, see Amendment)
 **Date:** 2026-09-19
 **Deciders:** Ben
 
@@ -13,8 +13,8 @@ resulting task runs on a model **matched to its difficulty**.
 
 Claude Code now supports this natively: subagent frontmatter takes `model` (`haiku` /
 `sonnet` / `opus` / `fable` / full ID / `inherit`) and `effort`; the Agent tool takes a
-per-invocation `model` that outranks the frontmatter; `SubagentStart` hooks receive the
-resolved model; `PreToolUse` hooks on the Agent tool can deny a dispatch. Hooks cannot
+per-invocation `model` that outranks the frontmatter; hooks can observe which model a
+subagent actually ran on; `PreToolUse` hooks on the Agent tool can deny a dispatch. Hooks cannot
 rewrite a subagent's model, so enforcement has to be deny-or-warn, not silent rerouting.
 
 ### Prior art surveyed (open source)
@@ -42,16 +42,15 @@ Add a **token optimizer** as a method + policy, not new infrastructure:
 - **Planner** runs on the high tier (`model: opus`, `effort: high`) and the spec gains a
   **task table**: files, tier, objective acceptance check, reason. A task with no check cannot
   go below T2.
-- **Three tiers plus a conditional top** in `memory/model-routing.md` (T0 haiku · T1 sonnet ·
-  T2 opus · T3 fable only for the Planner on a genuinely ambiguous request and the Reviewer on a
-  security-heavy diff, applied per dispatch, never as a default), first-match classification rules, **floors** (Planner/Reviewer ≥ T2, Ops ≥ T1, sensitive-surface code ≥
+- **Three tiers** in `memory/model-routing.md` (T0 haiku · T1 sonnet · T2 opus), first-match
+  classification rules, **floors** (Planner/Reviewer ≥ T2, Ops ≥ T1, sensitive-surface code ≥
   T1), an **escalation ladder** (two failures → one tier up, never down), and **budget modes**
   that change who executes, never what is verified.
 - **Dispatch per task** with the Agent tool's `model` parameter; the six roles stay the six
   roles, each with a frontmatter default tier.
 - **Two hooks:** `routing-guard.mjs` (PreToolUse on Agent — denies a role below its floor,
-  reminds when no tier is named) and `dispatch-ledger.mjs` (SubagentStart — JSONL ledger of the
-  resolved model; `/routing` reports it).
+  reminds when no tier is named) and `dispatch-ledger.mjs` (PostToolUse on Agent — JSONL ledger of
+  the resolved model and tokens; `/routing` reports it).
 - **Reviewer stays high** and reviews everything with the same rigor; the gate still runs.
 
 ## Options considered
@@ -82,9 +81,8 @@ Option B keeps the tier next to the acceptance check that justifies it.
   on planning and review, where it changes outcomes.
 - **Negative:** a badly specified task at T0/T1 costs an escalation; effort is per agent, not
   per task; hooks fire on every Agent dispatch (cheap, but present).
-- **Neutral / follow-up:** re-tune floors from the ledger after real use; revisit the two T3
-  triggers once the ledger shows how often they fire; a future eval harness could replay the
-  task table against tiers.
+- **Neutral / follow-up:** re-tune floors from the ledger after real use; a future eval
+  harness could replay the task table against tiers.
 
 ## Validation
 
@@ -93,3 +91,27 @@ Option B keeps the tier next to the acceptance check that justifies it.
   and no Reviewer-caught regression attributable to a cheaper tier.
 - Evals: `evals/planner/task-routing.md`, `evals/coder/escalates-instead-of-guessing.md`,
   `evals/token-optimizer/escalation-ladder.md`.
+
+## Amendment — 2026-11-01: no tier above Opus
+
+A conditional T3 (`fable`) was added on 2026-09-19 for two cases: the Planner on a genuinely
+ambiguous request and the Reviewer on a security-heavy diff. It is removed at the owner's call:
+Opus at high effort covers both roles, and a fourth tier added a classification step, a
+per-dispatch override and a higher per-token price without a measured benefit.
+
+What stays: the Orchestrator still flags **security-heavy** changes, and the Reviewer then runs
+its **full security pass** (every BLOCKER axis mandatory, attack paths enumerated) on the same
+model. Ambiguity stays the Planner's job through the existing three-question limit and the
+`brainstorming` skill. A model the policy does not rank, Fable included, is not blocked by the
+guard; the ledger records it as `unknown` so any use stays visible.
+
+Two Claude Code changes are folded in at the same time:
+
+- **Per-dispatch effort.** The Agent tool now takes `effort` per invocation (v2.1.292+), which
+  removes Option B's main con. Each tier carries a default effort (T0 `low`, T1 `medium`, T2
+  `high`) passed with its model, and a security-heavy review runs the Reviewer at `xhigh`.
+  This matters more now that the current Opus, Sonnet and Haiku default to `medium`.
+- **Ledger source.** `SubagentStart` no longer documents a `model` field, so the ledger moved
+  to `PostToolUse` on the Agent tool, which reports `resolvedModel` and `totalTokens`. The
+  ledger now also records the requested model and effort and whether the subagent returned
+  `ESCALATE:`, which gives `/routing` tokens per tier and an escalation count.
