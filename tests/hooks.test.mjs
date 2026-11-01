@@ -70,8 +70,8 @@ test('routing-guard denies a planner dispatched on sonnet (floor is the top tier
   assert.equal(json.hookSpecificOutput.permissionDecision, 'deny');
 });
 
-test('routing-guard allows a coder at any tier and planner/reviewer at/above their floor (incl. the fable override)', () => {
-  for (const [agent, model] of [['coder', 'haiku'], ['coder', 'opus'], ['planner', 'opus'], ['planner', 'fable'], ['reviewer', 'claude-fable-5-1']]) {
+test('routing-guard allows a coder at any tier and planner/reviewer at their floor', () => {
+  for (const [agent, model] of [['coder', 'haiku'], ['coder', 'opus'], ['planner', 'opus'], ['reviewer', 'claude-opus-5-5']]) {
     assert.equal(runHook('routing-guard.mjs', dispatch(agent, model)).trim(), '', `${agent}@${model} should pass silently`);
   }
 });
@@ -80,11 +80,12 @@ test('routing-guard reminds (does not block) when a role is dispatched with no t
   const json = JSON.parse(runHook('routing-guard.mjs', dispatch('coder')));
   assert.equal(json.hookSpecificOutput.permissionDecision, undefined);
   assert.match(json.hookSpecificOutput.additionalContext, /without a model/);
-  assert.match(json.hookSpecificOutput.additionalContext, /T1/);
+  assert.match(json.hookSpecificOutput.additionalContext, /model: sonnet, effort: medium/);
 });
 
-test('routing-guard ignores non-Coding-OS agents, other tools, and malformed input', () => {
+test('routing-guard ignores non-Coding-OS agents, unranked models, other tools, and malformed input', () => {
   assert.equal(runHook('routing-guard.mjs', dispatch('Explore', 'haiku')).trim(), '');
+  assert.equal(runHook('routing-guard.mjs', dispatch('reviewer', 'fable')).trim(), '');
   assert.equal(
     runHook('routing-guard.mjs', JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } })).trim(),
     ''
@@ -103,23 +104,58 @@ test('routing-guard only warns when the policy sets enforce=false', () => {
   assert.match(json.hookSpecificOutput.additionalContext, /should not run below T2/);
 });
 
-test('dispatch-ledger records the resolved model on SubagentStart and reports stats', () => {
+test('dispatch-ledger records each Agent dispatch from PostToolUse and reports stats', () => {
   const root = mkdtempSync(join(tmpdir(), 'coding-os-'));
-  const start = (agent_type, model) =>
-    runHook('dispatch-ledger.mjs', JSON.stringify({ hook_event_name: 'SubagentStart', session_id: 's1', agent_type, model }), { CLAUDE_PROJECT_DIR: root });
-  start('coder', 'claude-haiku-4-5');
-  start('coder', 'claude-sonnet-5');
-  start('reviewer', 'claude-opus-5');
-  start('reviewer', 'claude-fable-5-1');
+  const done = (subagent_type, requested, effort, resolvedModel, totalTokens, text = 'done') =>
+    runHook(
+      'dispatch-ledger.mjs',
+      JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        session_id: 's1',
+        tool_name: 'Agent',
+        tool_input: { subagent_type, model: requested, effort, prompt: 'p', description: 'd' },
+        tool_response: { status: 'completed', resolvedModel, totalTokens, content: [{ type: 'text', text }] },
+      }),
+      { CLAUDE_PROJECT_DIR: root }
+    );
+  done('coder', 'haiku', 'low', 'claude-haiku-5-5', 1000);
+  done('coder', 'sonnet', 'medium', 'claude-sonnet-5-5', 3000, 'ESCALATE: the spec does not settle the return type');
+  done('reviewer', 'opus', 'xhigh', 'claude-opus-5-5', 6000);
+  done('reviewer', undefined, undefined, 'claude-fable-5-1', 2000); // not in the policy: shown as unknown
   const file = join(root, '.claude/token-optimizer/ledger.jsonl');
   assert.ok(existsSync(file), 'ledger file created under CLAUDE_PROJECT_DIR');
   const rows = readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   assert.equal(rows.length, 4);
-  assert.deepEqual(rows.map((r) => r.tier), ['T0', 'T1', 'T2', 'T3']);
+  assert.deepEqual(rows.map((r) => r.tier), ['T0', 'T1', 'T2', null]);
+  assert.deepEqual(rows.map((r) => r.effort), ['low', 'medium', 'xhigh', null]);
+  assert.deepEqual(rows.map((r) => r.escalated), [false, true, false, false]);
+  assert.equal(rows[2].requested, 'opus');
   const out = runHook('dispatch-ledger.mjs', '', { CLAUDE_PROJECT_DIR: root, args: ['stats'] });
   assert.match(out, /4 subagent dispatches/);
-  assert.match(out, /coder: claude-haiku-4-5=1, claude-sonnet-5=1/);
-  assert.match(out, /T3: 1 \(25%\)/);
+  assert.match(out, /T1: 1 \(25%\), 3000 tokens/);
+  assert.match(out, /unknown: 1 \(25%\), 2000 tokens/);
+  assert.match(out, /coder: claude-haiku-5-5=1, claude-sonnet-5-5=1/);
+  assert.match(out, /coder@T1: 1/);
+});
+
+test('dispatch-ledger ignores other tools and the old SubagentStart shape', () => {
+  const root = mkdtempSync(join(tmpdir(), 'coding-os-'));
+  runHook('dispatch-ledger.mjs', JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } }), { CLAUDE_PROJECT_DIR: root });
+  runHook('dispatch-ledger.mjs', JSON.stringify({ hook_event_name: 'SubagentStart', agent_type: 'coder' }), { CLAUDE_PROJECT_DIR: root });
+  assert.ok(!existsSync(join(root, '.claude/token-optimizer/ledger.jsonl')));
+});
+
+test('dispatch-ledger records a background launch without tokens', () => {
+  const root = mkdtempSync(join(tmpdir(), 'coding-os-'));
+  runHook(
+    'dispatch-ledger.mjs',
+    JSON.stringify({ tool_name: 'Agent', tool_input: { subagent_type: 'Explore', model: 'haiku' }, tool_response: { status: 'async_launched', resolvedModel: 'claude-haiku-5-5' } }),
+    { CLAUDE_PROJECT_DIR: root }
+  );
+  const row = JSON.parse(readFileSync(join(root, '.claude/token-optimizer/ledger.jsonl'), 'utf8'));
+  assert.equal(row.agent, 'Explore');
+  assert.equal(row.tier, 'T0');
+  assert.equal(row.tokens, null);
 });
 
 test('dispatch-ledger stays silent and never throws on malformed input', () => {

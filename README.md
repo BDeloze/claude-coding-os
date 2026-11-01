@@ -89,17 +89,16 @@ to a different framework, DB, or host. The core process never changes.
 - Tiers live in **`memory/model-routing.md`** (swappable, like the stack profile):
   **T0 `haiku`** read-only recon and fully specified mechanical edits · **T1 `sonnet`** specified
   implementation with a check · **T2 `opus`** design, cross-cutting, concurrency, migrations,
-  authorization, non-obvious debugging · **T3 `fable`** conditional only: the Planner on a
-  genuinely ambiguous request, the Reviewer on a security-heavy diff (auth, authz/RLS, storage
-  policies, payments, secrets, unauthenticated input). Floors: Planner/Reviewer ≥ T2, Ops ≥ T1,
-  sensitive-surface code ≥ T1.
-- The **Coder is dispatched per task** with the Agent tool's `model` parameter. Two failures at a
+  authorization, non-obvious debugging. Floors: Planner/Reviewer ≥ T2, Ops ≥ T1,
+  sensitive-surface code ≥ T1. No tier above Opus.
+- The **Coder is dispatched per task** with the Agent tool's `model` and `effort` parameters
+  (T0 `low`, T1 `medium`, T2 `high`). Two failures at a
   tier → one tier up with the failure report; never down; never a third try.
 - **Reviewer stays high** and the gate always runs — budget modes (economy / default / thorough)
   change who executes, never what is verified.
 - Two hooks: `routing-guard.mjs` (PreToolUse on Agent) denies a role below its floor and reminds
-  when no tier was named; `dispatch-ledger.mjs` (SubagentStart) logs the resolved model to
-  `.claude/token-optimizer/ledger.jsonl`. `/routing` reports it so floors are re-tuned from
+  when no tier was named; `dispatch-ledger.mjs` (PostToolUse on Agent) logs the model each dispatch actually ran on,
+  its tokens and any escalation to `.claude/token-optimizer/ledger.jsonl`. `/routing` reports it so floors are re-tuned from
   evidence. Design and the open-source survey behind it: `docs/adr/0001-tiered-model-routing.md`.
 
 ## 6. Tests

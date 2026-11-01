@@ -15,19 +15,23 @@ policy. The method is generic; this file is what you tune per project or per pla
 |---|---|---|---|
 | **T0** | `haiku` | Read-only recon (locate, map, summarize, run tests and report). Mechanical edits fully specified by the spec: rename, copy, config value, ≤2 files, **zero design decisions**, an objective check exists. | Anything that says "decide", "design", "figure out", or touches a sensitive surface. |
 | **T1** | `sonnet` | Fully specified implementation with an objective acceptance check (tests / typecheck / documented manual check). Most feature and bug-fix tasks land here. | Cross-cutting design, concurrency, root-causing a non-obvious bug. |
-| **T2** | `opus` | Sets or changes a pattern (ADR), cross-cutting (>5 files or >1 layer), concurrency / races, migration design, authorization / RLS policy design, perf- or security-sensitive logic, non-obvious debugging. Planning and review run here by default. | — (if T2 fails twice the user decides). |
-| **T3** | `fable` | **Conditional override, two triggers only.** (a) **Planner** when the requirements are *genuinely ambiguous* — still underspecified after the Orchestrator's three questions, or open-ended enough to need `brainstorming` *and* touching a sensitive surface. (b) **Reviewer** when the diff is *security-heavy* — it touches auth / session handling, authorization or RLS policies, storage policies, payments, secrets or crypto, or input validation on an unauthenticated route. | Coder work, routine plans, routine reviews. Not an escalation rung for the Coder. |
+| **T2** | `opus` | Sets or changes a pattern (ADR), cross-cutting (>5 files or >1 layer), concurrency / races, migration design, authorization / RLS policy design, perf- or security-sensitive logic, non-obvious debugging. Planning and review always run here. | — (top tier; if T2 fails twice the user decides). |
 
-T3 is dispatched **per invocation** (`model: fable`), never set as a frontmatter default: the
-agent files stay on `opus` so the OS works on plans without Fable. Where Fable is not
-available, T3 falls back to T2 and the trigger is noted in the spec / review. Model aliases
-resolve to the latest model of that family in Claude Code, so this file never pins versions.
+There is deliberately no tier above Opus: Opus at high effort covers planning and review, and
+the Reviewer's security pass covers security-heavy diffs.
+
+**Effort is the second dial.** Each tier carries a default effort (T0 `low`, T1 `medium`,
+T2 `high`) that the dispatcher passes with the model. The Agent tool takes a per-dispatch
+`effort` from Claude Code v2.1.292; on older versions the agent's frontmatter or session
+effort applies. The current Opus, Sonnet and Haiku default to `medium`, so a T2 dispatch
+without an explicit effort runs below what this policy intends. A security-heavy review is the
+one per-dispatch raise: the Reviewer at `xhigh`. Model aliases resolve to the latest
+model of that family in Claude Code, so this file never pins versions.
 
 ## Floors (the guard hook enforces these)
 
 - **Planner** and **Reviewer** never run below T2. Planning quality is what makes cheap
-  execution safe; a cheap reviewer defeats the whole scheme. On a T3 trigger (above) they are
-  dispatched at `fable`; the Orchestrator names the trigger in its routing line.
+  execution safe; a cheap reviewer defeats the whole scheme.
 - **Ops** never runs below T1 (deploys and incidents).
 - **Coder** may run at any tier; the plan's task table decides. **Sensitive-surface tasks**
   (DB / Auth / authorization / Storage / API) never run below T1.
@@ -38,9 +42,8 @@ resolve to the latest model of that family in Claude Code, so this file never pi
 1. A task fails its acceptance check **twice** at a tier, or the agent returns
    `ESCALATE: <reason>` → re-dispatch **one tier up** with the failure report attached.
 2. **Never route a failed task down.** Never retry a third time at the same tier.
-3. T2 fails twice → stop and bring it to the user with the two failure reports. T3 is not a
-   rung on this ladder: a task the Coder cannot finish on Opus is a planning problem, not a
-   model problem.
+3. T2 fails twice → stop and bring it to the user with the two failure reports. A task the
+   Coder cannot finish on Opus is a planning problem, not a model problem.
 
 ## Budget modes
 
@@ -61,18 +64,17 @@ disables routing — use it only for a deliberate "everything on Sonnet" economy
 
 `routing-guard.mjs` parses this block. `rank` orders the aliases; `floor` is the lowest tier
 an agent may be dispatched at; `default` is what the agent's frontmatter is expected to carry;
-`overrides` lists the only per-invocation upgrades above the default and their trigger.
+a tier's `effort` is what the dispatcher passes alongside its model.
 Set `"enforce": false` to turn hard denials into warnings.
 
 ```json
 {
   "enforce": true,
-  "rank": { "haiku": 0, "sonnet": 1, "opus": 2, "fable": 3 },
+  "rank": { "haiku": 0, "sonnet": 1, "opus": 2 },
   "tiers": {
-    "T0": { "model": "haiku" },
-    "T1": { "model": "sonnet" },
-    "T2": { "model": "opus" },
-    "T3": { "model": "fable" }
+    "T0": { "model": "haiku",  "effort": "low" },
+    "T1": { "model": "sonnet", "effort": "medium" },
+    "T2": { "model": "opus",   "effort": "high" }
   },
   "agents": {
     "orchestrator": { "default": "T1", "floor": "T0" },
@@ -81,10 +83,6 @@ Set `"enforce": false` to turn hard denials into warnings.
     "reviewer":     { "default": "T2", "floor": "T2" },
     "ops":          { "default": "T1", "floor": "T1" },
     "tracker":      { "default": "T0", "floor": "T0" }
-  },
-  "overrides": {
-    "planner":  { "tier": "T3", "when": "ambiguous" },
-    "reviewer": { "tier": "T3", "when": "security-heavy" }
   },
   "escalation": { "failuresBeforeEscalate": 2, "neverRouteDown": true }
 }

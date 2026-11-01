@@ -243,11 +243,9 @@ A short PR description is fine. A missing rollback plan is not.
 
 - **The strongest model decides; the cheapest model that can be verified does.** Planning and
   review run on the high tier. Each implementation task runs at the tier the spec's task table
-  names (T0 / T1 / T2 → `memory/model-routing.md`), dispatched with the model parameter.
+  names (T0 / T1 / T2 → `memory/model-routing.md`), dispatched with the tier's model and effort.
 - A task goes below T2 only if it is **fully specified** and has an **objective acceptance
   check**. Sensitive-surface tasks never go below T1. Planner and Reviewer never below T2.
-- **T3 (`fable`) has two triggers and no others:** the Planner on a genuinely ambiguous
-  request; the Reviewer on a security-heavy diff. Applied per dispatch, never as a default.
 - **Escalation ladder:** two failures at a tier (or `ESCALATE:`) → one tier up with the failure
   report. Never route down. Never a third try at the same tier.
 - **Verification is never cut** to save tokens: Reviewer + gate run on every PR, whatever tier

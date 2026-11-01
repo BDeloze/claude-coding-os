@@ -8,8 +8,12 @@ export const projectRoot = () => process.env.CLAUDE_PROJECT_DIR || process.cwd()
 
 export const FALLBACK_POLICY = {
   enforce: true,
-  rank: { haiku: 0, sonnet: 1, opus: 2, fable: 3 },
-  tiers: { T0: { model: 'haiku' }, T1: { model: 'sonnet' }, T2: { model: 'opus' }, T3: { model: 'fable' } },
+  rank: { haiku: 0, sonnet: 1, opus: 2 },
+  tiers: {
+    T0: { model: 'haiku', effort: 'low' },
+    T1: { model: 'sonnet', effort: 'medium' },
+    T2: { model: 'opus', effort: 'high' },
+  },
   agents: {
     orchestrator: { default: 'T1', floor: 'T0' },
     planner: { default: 'T2', floor: 'T2' },
@@ -17,10 +21,6 @@ export const FALLBACK_POLICY = {
     reviewer: { default: 'T2', floor: 'T2' },
     ops: { default: 'T1', floor: 'T1' },
     tracker: { default: 'T0', floor: 'T0' },
-  },
-  overrides: {
-    planner: { tier: 'T3', when: 'ambiguous' },
-    reviewer: { tier: 'T3', when: 'security-heavy' },
   },
   escalation: { failuresBeforeEscalate: 2, neverRouteDown: true },
 };
@@ -55,7 +55,8 @@ export function tierForModel(policy, model) {
   const fam = modelFamily(model, policy.rank);
   if (fam === null) return null;
   for (const [tier, def] of Object.entries(policy.tiers)) if (def.model === fam) return tier;
-  // A family above every tier (e.g. fable) counts as the top tier.
+  // A ranked family above every tier counts as the top tier; an unranked one returns null,
+  // so the ledger shows it as "unknown" instead of hiding it.
   const top = Object.entries(policy.tiers).sort((a, b) => policy.rank[b[1].model] - policy.rank[a[1].model])[0];
   return policy.rank[fam] > policy.rank[top[1].model] ? top[0] : null;
 }

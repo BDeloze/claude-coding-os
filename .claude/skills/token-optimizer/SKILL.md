@@ -30,31 +30,24 @@ nothing to verify it against.
 API) never runs below T1. Planner and Reviewer never run below T2. Borderline → budget mode
 decides (economy: down · default: Planner's call · thorough: up).
 
-**T3 (`fable`) has exactly two triggers**, both decided by the Orchestrator and applied per
-dispatch (`model: fable`), never as a frontmatter default:
-- **Planner at T3** when the request is *genuinely ambiguous*: still underspecified after the
-  three questions, or open-ended enough to need `brainstorming` and touching a sensitive surface.
-- **Reviewer at T3** when the diff is *security-heavy*: auth / session handling, authorization
-  or RLS policies, storage policies, payments, secrets or crypto, input validation on an
-  unauthenticated route.
-A routine plan or review stays on T2. T3 is not a Coder tier and not an escalation rung.
-
 Split, don't average: a task that is "mostly mechanical plus one design decision" becomes a
 T2 decision task and a T0/T1 execution task.
 
 ## 3. Dispatch with the tier named
-Dispatch the Coder with the **Agent tool and the `model` parameter set to the tier's alias**
-(per-invocation model takes precedence over the agent's frontmatter default):
+Dispatch the Coder with the **Agent tool, the `model` parameter set to the tier's alias and
+`effort` set to the tier's effort** (per-invocation values take precedence over the agent's
+frontmatter; `effort` needs Claude Code v2.1.292+):
 
 ```
 Agent(subagent_type: "coder", model: "haiku" | "sonnet" | "opus",
-      prompt: <self-contained brief>)
+      effort: "low" | "medium" | "high", prompt: <self-contained brief>)
 ```
 
 The brief is the only context the subagent has. Include: the spec section verbatim, the exact
 files, the acceptance check, the branch, "do not widen scope", and the escalation clause:
 *"If you hit a decision the spec does not settle, stop and return `ESCALATE: <reason>` — do not
-guess."* Read-only recon goes to the built-in `Explore` agent at `haiku`.
+guess."* Read-only recon goes to the built-in `Explore` agent at `haiku`. A security-heavy
+review goes to the Reviewer at `opus` with `effort: xhigh`.
 
 ## 4. Escalate, never thrash, never route down
 - Fails its check **twice** at a tier, or returns `ESCALATE:` → re-dispatch **one tier up**
@@ -67,7 +60,8 @@ The Reviewer (T2) reads the full diff + spec regardless of which tiers produced 
 gate runs on every PR. Budget modes change **who executes**, never how much is verified.
 
 ## 6. Measure, then re-tune from evidence
-`.claude/hooks/dispatch-ledger.mjs` logs every subagent start (agent, model) to
+`.claude/hooks/dispatch-ledger.mjs` logs every Agent dispatch (agent, requested model and
+effort, the model it actually ran on, tokens, and whether it returned `ESCALATE:`) to
 `.claude/token-optimizer/ledger.jsonl`; `/routing` summarizes it. Judge **cost per completed
 task**, not per request — a cheap attempt that escalates still paid for the cheap attempt.
 Move a task class up a tier after two escalations of the same kind; move one down only after
